@@ -1,2 +1,2 @@
-void register_godotsteam_types();
-void unregister_godotsteam_types();
+void register_googleanalytics_types();
+void unregister_googleanalytics_types();
