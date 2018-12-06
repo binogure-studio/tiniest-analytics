@@ -1,5 +1,5 @@
 def can_build(platform):
-  return platform=="x11" or platform=="windows" or env["platform"] == "osx"
+  return platform=="x11" or platform=="windows" or platform == "osx"
 
 def configure(env):
   env.Append(CPPPATH=["#modules/googleanalytics/libcurl/public/"])
