@@ -7,7 +7,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2018, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) 1998 - 2017, Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -146,8 +146,7 @@ typedef enum {
   CURLSSLBACKEND_SCHANNEL = 8,
   CURLSSLBACKEND_DARWINSSL = 9,
   CURLSSLBACKEND_AXTLS = 10,
-  CURLSSLBACKEND_MBEDTLS = 11,
-  CURLSSLBACKEND_MESALINK = 12
+  CURLSSLBACKEND_MBEDTLS = 11
 } curl_sslbackend;
 
 /* aliases for library clones and renames */
@@ -246,9 +245,7 @@ typedef size_t (*curl_write_callback)(char *buffer,
                                       size_t nitems,
                                       void *outstream);
 
-/* This callback will be called when a new resolver request is made */
-typedef int (*curl_resolver_start_callback)(void *resolver_state,
-                                            void *reserved, void *userdata);
+
 
 /* enumeration of file types */
 typedef enum {
@@ -518,7 +515,8 @@ typedef enum {
   CURLE_UNKNOWN_OPTION,          /* 48 - User specified an unknown option */
   CURLE_TELNET_OPTION_SYNTAX,    /* 49 - Malformed telnet option */
   CURLE_OBSOLETE50,              /* 50 - NOT USED */
-  CURLE_OBSOLETE51,              /* 51 - NOT USED */
+  CURLE_PEER_FAILED_VERIFICATION, /* 51 - peer's certificate or fingerprint
+                                     wasn't verified fine */
   CURLE_GOT_NOTHING,             /* 52 - when this is a specific error */
   CURLE_SSL_ENGINE_NOTFOUND,     /* 53 - SSL crypto engine not found */
   CURLE_SSL_ENGINE_SETFAILED,    /* 54 - can not set SSL crypto engine as
@@ -528,8 +526,7 @@ typedef enum {
   CURLE_OBSOLETE57,              /* 57 - NOT IN USE */
   CURLE_SSL_CERTPROBLEM,         /* 58 - problem with the local certificate */
   CURLE_SSL_CIPHER,              /* 59 - couldn't use specified cipher */
-  CURLE_PEER_FAILED_VERIFICATION, /* 60 - peer's certificate or fingerprint
-                                     wasn't verified fine */
+  CURLE_SSL_CACERT,              /* 60 - problem with the CA cert (path?) */
   CURLE_BAD_CONTENT_ENCODING,    /* 61 - Unrecognized/bad encoding */
   CURLE_LDAP_INVALID_URL,        /* 62 - Invalid LDAP URL */
   CURLE_FILESIZE_EXCEEDED,       /* 63 - Maximum file size exceeded */
@@ -580,13 +577,8 @@ typedef enum {
   CURLE_SSL_INVALIDCERTSTATUS,   /* 91 - invalid certificate status */
   CURLE_HTTP2_STREAM,            /* 92 - stream error in HTTP/2 framing layer
                                     */
-  CURLE_RECURSIVE_API_CALL,      /* 93 - an api function was called from
-                                    inside a callback */
   CURL_LAST /* never use! */
 } CURLcode;
-
-/* added in 7.62.0 */
-#define CURLE_SSL_CACERT CURLE_PEER_FAILED_VERIFICATION
 
 #ifndef CURL_NO_OLDIES /* define this to test if your app builds with all
                           the obsolete stuff removed! */
@@ -695,7 +687,6 @@ typedef enum {
  * CURLAUTH_NTLM         - HTTP NTLM authentication
  * CURLAUTH_DIGEST_IE    - HTTP Digest authentication with IE flavour
  * CURLAUTH_NTLM_WB      - HTTP NTLM authentication delegated to winbind helper
- * CURLAUTH_BEARER       - HTTP Bearer token authentication
  * CURLAUTH_ONLY         - Use together with a single other type to force no
  *                         authentication or just that single type
  * CURLAUTH_ANY          - All fine types set
@@ -713,7 +704,6 @@ typedef enum {
 #define CURLAUTH_NTLM         (((unsigned long)1)<<3)
 #define CURLAUTH_DIGEST_IE    (((unsigned long)1)<<4)
 #define CURLAUTH_NTLM_WB      (((unsigned long)1)<<5)
-#define CURLAUTH_BEARER       (((unsigned long)1)<<6)
 #define CURLAUTH_ONLY         (((unsigned long)1)<<31)
 #define CURLAUTH_ANY          (~CURLAUTH_DIGEST_IE)
 #define CURLAUTH_ANYSAFE      (~(CURLAUTH_BASIC|CURLAUTH_DIGEST_IE))
@@ -725,7 +715,6 @@ typedef enum {
 #define CURLSSH_AUTH_HOST      (1<<2) /* host key files */
 #define CURLSSH_AUTH_KEYBOARD  (1<<3) /* keyboard interactive */
 #define CURLSSH_AUTH_AGENT     (1<<4) /* agent (ssh-agent, pageant...) */
-#define CURLSSH_AUTH_GSSAPI    (1<<5) /* gssapi (kerberos, ...) */
 #define CURLSSH_AUTH_DEFAULT CURLSSH_AUTH_ANY
 
 #define CURLGSSAPI_DELEGATION_NONE        0      /* no delegation (default) */
@@ -738,9 +727,7 @@ enum curl_khtype {
   CURLKHTYPE_UNKNOWN,
   CURLKHTYPE_RSA1,
   CURLKHTYPE_RSA,
-  CURLKHTYPE_DSS,
-  CURLKHTYPE_ECDSA,
-  CURLKHTYPE_ED25519
+  CURLKHTYPE_DSS
 };
 
 struct curl_khkey {
@@ -798,14 +785,6 @@ typedef enum {
 /* - NO_REVOKE tells libcurl to disable certificate revocation checks for those
    SSL backends where such behavior is present. */
 #define CURLSSLOPT_NO_REVOKE (1<<1)
-
-/* The default connection attempt delay in milliseconds for happy eyeballs.
-   CURLOPT_HAPPY_EYEBALLS_TIMEOUT_MS.3 and happy-eyeballs-timeout-ms.d document
-   this value, keep them in sync. */
-#define CURL_HET_DEFAULT 200L
-
-/* The default connection upkeep interval in milliseconds. */
-#define CURL_UPKEEP_INTERVAL_DEFAULT 60000L
 
 #ifndef CURL_NO_OLDIES /* define this to test if your app builds with all
                           the obsolete stuff removed! */
@@ -956,7 +935,7 @@ typedef enum {
   CINIT(READDATA, OBJECTPOINT, 9),
 
   /* Buffer to receive error messages in, must be at least CURL_ERROR_SIZE
-   * bytes big. */
+   * bytes big. If this is not used, error messages go to stderr instead: */
   CINIT(ERRORBUFFER, OBJECTPOINT, 10),
 
   /* Function that will be called to store the output (instead of fwrite). The
@@ -1680,7 +1659,7 @@ typedef enum {
    * Only supported by the c-ares DNS backend */
   CINIT(DNS_LOCAL_IP4, STRINGPOINT, 222),
 
-  /* Set the local IPv6 address to use for outgoing DNS requests.
+  /* Set the local IPv4 address to use for outgoing DNS requests.
    * Only supported by the c-ares DNS backend */
   CINIT(DNS_LOCAL_IP6, STRINGPOINT, 223),
 
@@ -1836,41 +1815,6 @@ typedef enum {
 
   /* Post MIME data. */
   CINIT(MIMEPOST, OBJECTPOINT, 269),
-
-  /* Time to use with the CURLOPT_TIMECONDITION. Specified in number of
-     seconds since 1 Jan 1970. */
-  CINIT(TIMEVALUE_LARGE, OFF_T, 270),
-
-  /* Head start in milliseconds to give happy eyeballs. */
-  CINIT(HAPPY_EYEBALLS_TIMEOUT_MS, LONG, 271),
-
-  /* Function that will be called before a resolver request is made */
-  CINIT(RESOLVER_START_FUNCTION, FUNCTIONPOINT, 272),
-
-  /* User data to pass to the resolver start callback. */
-  CINIT(RESOLVER_START_DATA, OBJECTPOINT, 273),
-
-  /* send HAProxy PROXY protocol header? */
-  CINIT(HAPROXYPROTOCOL, LONG, 274),
-
-  /* shuffle addresses before use when DNS returns multiple */
-  CINIT(DNS_SHUFFLE_ADDRESSES, LONG, 275),
-
-  /* Specify which TLS 1.3 ciphers suites to use */
-  CINIT(TLS13_CIPHERS, STRINGPOINT, 276),
-  CINIT(PROXY_TLS13_CIPHERS, STRINGPOINT, 277),
-
-  /* Disallow specifying username/login in URL. */
-  CINIT(DISALLOW_USERNAME_IN_URL, LONG, 278),
-
-  /* DNS-over-HTTPS URL */
-  CINIT(DOH_URL, STRINGPOINT, 279),
-
-  /* Preferred buffer size to use for uploads */
-  CINIT(UPLOAD_BUFFERSIZE, LONG, 280),
-
-  /* Time in ms between connection upkeep calls for long-lived connections. */
-  CINIT(UPKEEP_INTERVAL_MS, LONG, 281),
 
   CURLOPT_LASTENTRY /* the last unused */
 } CURLoption;
@@ -2512,7 +2456,6 @@ typedef enum {
   CURLINFO_REQUEST_SIZE     = CURLINFO_LONG   + 12,
   CURLINFO_SSL_VERIFYRESULT = CURLINFO_LONG   + 13,
   CURLINFO_FILETIME         = CURLINFO_LONG   + 14,
-  CURLINFO_FILETIME_T       = CURLINFO_OFF_T  + 14,
   CURLINFO_CONTENT_LENGTH_DOWNLOAD   = CURLINFO_DOUBLE + 15,
   CURLINFO_CONTENT_LENGTH_DOWNLOAD_T = CURLINFO_OFF_T  + 15,
   CURLINFO_CONTENT_LENGTH_UPLOAD     = CURLINFO_DOUBLE + 16,
@@ -2552,17 +2495,7 @@ typedef enum {
   CURLINFO_SCHEME           = CURLINFO_STRING + 49,
   /* Fill in new entries below here! */
 
-  /* Preferably these would be defined conditionally based on the
-     sizeof curl_off_t being 64-bits */
-  CURLINFO_TOTAL_TIME_T     = CURLINFO_OFF_T + 50,
-  CURLINFO_NAMELOOKUP_TIME_T = CURLINFO_OFF_T + 51,
-  CURLINFO_CONNECT_TIME_T   = CURLINFO_OFF_T + 52,
-  CURLINFO_PRETRANSFER_TIME_T = CURLINFO_OFF_T + 53,
-  CURLINFO_STARTTRANSFER_TIME_T = CURLINFO_OFF_T + 54,
-  CURLINFO_REDIRECT_TIME_T  = CURLINFO_OFF_T + 55,
-  CURLINFO_APPCONNECT_TIME_T = CURLINFO_OFF_T + 56,
-
-  CURLINFO_LASTONE          = 56
+  CURLINFO_LASTONE          = 49
 } CURLINFO;
 
 /* CURLINFO_RESPONSE_CODE is the new name for the option previously known as
@@ -2605,7 +2538,6 @@ typedef enum {
   CURL_LOCK_DATA_DNS,
   CURL_LOCK_DATA_SSL_SESSION,
   CURL_LOCK_DATA_CONNECT,
-  CURL_LOCK_DATA_PSL,
   CURL_LOCK_DATA_LAST
 } curl_lock_data;
 
@@ -2795,7 +2727,6 @@ CURL_EXTERN CURLcode curl_easy_pause(CURL *handle, int bitmask);
   stuff before they can be included! */
 #include "easy.h" /* nothing in curl is fun without the easy stuff */
 #include "multi.h"
-#include "urlapi.h"
 
 /* the typechecker doesn't work in C++ (yet) */
 #if defined(__GNUC__) && defined(__GNUC_MINOR__) && \

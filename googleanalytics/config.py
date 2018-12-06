@@ -1,5 +1,5 @@
 def can_build(platform):
-  return platform=="x11" or platform=="windows"
+  return platform=="x11" or platform=="windows" or env["platform"] == "osx"
 
 def configure(env):
   env.Append(CPPPATH=["#modules/googleanalytics/libcurl/public/"])
@@ -14,15 +14,18 @@ def configure(env):
   elif env["platform"] == "windows":
     # mostly VisualStudio
     if env["CC"] == "cl":
-      env.Append(LINKFLAGS=["libcurl.lib"])
+      env.Append(LINKFLAGS=["libcurl_a.lib"])
       if env["bits"]=="32":
         env.Append(LIBPATH=["#modules/googleanalytics/libcurl/win32"])
       else: # 64 bit
         env.Append(LIBPATH=["#modules/googleanalytics/libcurl/win64"])
     # mostly "gcc"
     else:
-      env.Append(LIBS=["libcurl"])
+      env.Append(LIBS=["libcurl_a.lib"])
       if env["bits"]=="32":
         env.Append(LIBPATH=["#modules/googleanalytics/libcurl/win32"])
       else: # 64 bit
         env.Append(LIBPATH=["#modules/googleanalytics/libcurl/win64"])
+  elif env["platform"] == "osx":
+    env.Append(LIBS=["libcurl"])
+    env.Append(LIBPATH=['#modules/googleanalytics/libcurl/osx'])
