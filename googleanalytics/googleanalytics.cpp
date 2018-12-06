@@ -33,7 +33,7 @@ void GoogleAnalytics::reset_singleton() {
 }
 
 // utility function, used to replace spaces with pluses for URLs
-void replace_in_string(char *s, const int len, const char what, const char with) {
+void GoogleAnalytics::replace_in_string(char *s, const int len, const char what, const char with) {
 	for (int i = 0; i < len; ++i) {
 		if (s[i] == what) {
 			s[i] = with;
@@ -42,7 +42,7 @@ void replace_in_string(char *s, const int len, const char what, const char with)
 }
 
 // utility function, used to send the HTTP get
-bool execute_curl_url(const char* url, ...) {
+bool GoogleAnalytics::execute_curl_url(const String &url, ...) {
 	if (!curl_multi_handle) {
 		return false;
 	}
@@ -50,7 +50,7 @@ bool execute_curl_url(const char* url, ...) {
 	va_list argptr;
 	va_start(argptr, url);
 	char strAddr[2048] = {'\0'};
-	int slen = vsprintf(strAddr, url, argptr);
+	int slen = vsprintf(strAddr, url.utf8().get_data(), argptr);
 	va_end(argptr);
 
 	replace_in_string(strAddr, slen, ' ', '+');
@@ -64,7 +64,7 @@ bool execute_curl_url(const char* url, ...) {
 	return (result == CURLM_OK);
 }
 
-bool initialize(const char* trackingId, const char* uniqueClientId) {
+bool GoogleAnalytics::initialize(const String &trackingId, const String &uniqueClientId) {
 	bool initialized = false;
 
 	curl_global_init(CURL_GLOBAL_ALL);
@@ -73,25 +73,25 @@ bool initialize(const char* trackingId, const char* uniqueClientId) {
 	if (curl_multi_handle) {
 		initialized = true;
 
-		sprintf(base_url, "http://www.google-analytics.com/collect?v=1&tid=%s&cid=%s", trackingId, uniqueClientId);
+		sprintf(base_url, "http://www.google-analytics.com/collect?v=1&tid=%s&cid=%s", trackingId.utf8().get_data(), uniqueClientId.utf8().get_data());
 	}
 
 	return initialized;
 }
 
-void send_event_action_label_value(const char* category, const char* action, const char* label, unsigned int value) {
+void GoogleAnalytics::send_event_action_label_value(const String &category, const String &action, const String &label, uint32_t value) {
 	execute_curl_url("%s&t=event&ec=%s&ea=%s&el=%s&ev=%u&z=%d", base_url, category, action, label, value, rand());
 }
 
-void send_event_action_label(const char* category, const char* action, const char* label) {
+void GoogleAnalytics::send_event_action_label(const String &category, const String &action, const String &label) {
 	execute_curl_url("%s&t=event&ec=%s&ea=%s&el=%s&z=%d", base_url, category, action, label, rand());
 }
 
-void send_event_action(const char* category, const char* action) {
+void GoogleAnalytics::send_event_action(const String &category, const String &action) {
 	execute_curl_url("%s&t=event&ec=%s&ea=%s&z=%d", base_url, category, action, rand());
 }
 
-void flush() {
+void GoogleAnalytics::flush() {
 	if (!curl_multi_handle) {
 		return;
 	}
@@ -120,7 +120,7 @@ void flush() {
 					char strerr[2048];
 					
 					sprintf(strerr, "[Error] flush() failed for URL '%s' with error %ld\n", urlp ? urlp : "?", response_code);					
-					emit_signal("event_failed", strerr);
+					emit_signal("event_failed", &strerr);
 				}
 			}
 			curl_multi_remove_handle(curl_multi_handle, pMsg->easy_handle);

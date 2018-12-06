@@ -1,15 +1,15 @@
 #ifndef GOOGLEANALYTICS_H
 #define GOOGLEANALYTICS_H
 
-#include "dictionary.h"
-#include "object.h"
-#include "reference.h"
-#include "curl/curl.h"
-
+#include <inttypes.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
-#include <assert.h>
+#include <curl/curl.h>
+
+#include "dictionary.h"
+#include "object.h"
+#include "reference.h"
 
 class GoogleAnalytics : public Object
 {
@@ -20,15 +20,19 @@ public:
   GoogleAnalytics();
   ~GoogleAnalytics();
 
-  bool initialize(const char* trackingId, const char* uniqueClientId);
+  bool initialize(const String &trackingId, const String &uniqueClientId);
   void flush();
-  void send_event_action_label_value(const char* category, const char* action);
-  void send_event_action_label(const char* category, const char* action, const char* label);
-  void send_event_action(const char* category, const char* action, const char* label, unsigned int value);
+  void send_event_action(const String &category, const String &action);
+  void send_event_action_label(const String &category, const String &action, const String &label);
+  void send_event_action_label_value(const String &category, const String &action, const String &label, uint32_t value);
 
 protected:
   static void _bind_methods();
   static GoogleAnalytics *singleton;
+
+private:
+  bool execute_curl_url(const String &url, ...);
+  void replace_in_string(char *s, const int len, const char what, const char with);
 
   CURLM* curl_multi_handle;
   char base_url[2048] = {'\0'};
